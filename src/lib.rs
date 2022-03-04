@@ -1,196 +1,20 @@
+mod seqit;
+mod partit;
+
+pub trait Partitions : Iterator {
+   
+    fn kpartitions(self, k:u32) -> partit::KPartitions<Self>
+        where Self: Sized {
+        partit::kpartitions(self, k)
+    }
+}
+
+
 #[cfg(test)]
-mod partition_iterator {
-    use std::collections::VecDeque;
-
-    enum Funcs {
-        F1(usize, usize, usize),
-        F2(usize, usize, usize),
-        F3(usize, usize, usize),
-        B1(usize, usize, usize),
-        B11(usize, usize, usize),
-        B2(usize, usize, usize)
-    }
-
-    struct IncSeqIterator {
-        a:Vec<u32>,
-        stack:Vec<Funcs>,
-        buffer:VecDeque<Vec<u32>>
-    }
-
-    impl IncSeqIterator {
-         fn new(n:u32, k:u32) -> Self {
-            let mut a = vec![0; (n+1) as usize];
-            for j in 1..=k {
-                a[(n-k+j) as usize] = j-1;
-            }
-
-            let buffer = VecDeque::new();
-            if k == 0 {
-                return IncSeqIterator{a, stack: Vec::new(), buffer};
-            } else if k == 1 {
-                let mut res = IncSeqIterator{a, stack: Vec::new(), buffer};
-                res.visit();
-                return res;
-            }
-
-            let stack = vec![Funcs::F1(k as usize, n as usize, 0)];
-            IncSeqIterator{a, stack, buffer}
-        }
-
-        fn run(&mut self) -> bool {
-            match self.stack.pop() {
-                Some(Funcs::F1(mu, nu, sigma)) => {
-                    self.f1(mu, nu, sigma);
-                    true
-                }
-                Some(Funcs::F2(mu, nu, sigma)) => {
-                    self.f2(mu, nu, sigma);
-                    true
-                }
-                Some(Funcs::F3(mu, nu, sigma)) => {
-                    self.f3(mu, nu, sigma);
-                    true
-                }
-                Some(Funcs::B1(mu, nu, sigma)) => {
-                    self.b1(mu, nu, sigma);
-                    true
-                }
-                Some(Funcs::B11(mu, nu, sigma)) => {
-                    self.b11(mu, nu, sigma);
-                    true
-                }
-                Some(Funcs::B2(mu, nu, sigma)) => {
-                    self.b2(mu, nu, sigma);
-                    true
-                }
-                None => false,
-            }
-        }    
-        
-        fn visit(&mut self) {
-            let res: Vec<u32> = self.a.iter().skip(1).cloned().collect();
-            self.buffer.push_back(res);
-        }
-        
-        fn f1(&mut self, mu:usize, nu:usize, sigma:usize) {
-            self.stack.push(Funcs::F2(mu, nu, sigma)); // Continue at F2 afterwards
-            if mu == 2 {
-                self.visit()
-            } else {
-                // Recursive call to f
-                self.stack.push(Funcs::F1(mu-1, nu-1, (mu+sigma)%2));
-            }
-        }
-
-        fn f2(&mut self, mu:usize, nu:usize, sigma:usize) {
-            if nu == mu + 1 {
-                // We are done with this call to f so 
-                // nothing gets added to the stack
-                self.a[mu] = (mu - 1) as u32;
-                self.visit();
-                while self.a[nu] > 0 {
-                    self.a[nu] = self.a[nu] - 1;
-                    self.visit();
-                }
-            } else if nu > mu + 1 {
-                if (mu + sigma) % 2 == 1 {
-                    self.a[nu - 1] = (mu - 1) as u32;
-                } else {
-                    self.a[mu] = (mu - 1) as u32;
-                }
-
-                // Continue at f3 afterwards
-                self.stack.push(Funcs::F3(mu, nu, sigma));
-                if (self.a[nu] + sigma as u32) % 2 == 1 {
-                    self.stack.push(Funcs::B1(mu, nu-1, 0));
-                } else {
-                    self.stack.push(Funcs::F1(mu, nu-1, 0));
-                }
-            } 
-            // Otherwise we are done with f
-        }    
-
-        fn f3(&mut self, mu:usize, nu:usize, sigma:usize) {
-            if self.a[nu] > 0 {
-                // This simulates a loop until self.a[nu] is zero
-                self.stack.push(Funcs::F3(mu, nu, sigma));
-
-                // We make some recursive calls while modifying self.a
-                self.a[nu] = self.a[nu] - 1;
-                if (self.a[nu] + sigma as u32) % 2 == 1 {
-                    self.stack.push(Funcs::B1(mu, nu - 1, 0));
-                } else {
-                    self.stack.push(Funcs::F1(mu, nu - 1, 0));
-                }
-            }
-        }    
-        
-        fn b1(&mut self, mu:usize, nu:usize, sigma:usize) {
-            // Continue at b2 afterwards
-            self.stack.push(Funcs::B2(mu, nu, sigma)); 
-            if nu == mu + 1 {
-                while self.a[nu] < (mu - 1) as u32 {
-                    self.visit();
-                    self.a[nu] += 1;
-                }
-                self.visit();
-                self.a[mu] = 0;
-            } else if nu > mu + 1 {
-                // Continue at b11 afterwards
-                self.stack.push(Funcs::B11(mu, nu, sigma));
-                if (self.a[nu] + sigma as u32) % 2 == 1 {
-                    self.stack.push(Funcs::F1(mu, nu-1, 0));
-                } else {
-                    self.stack.push(Funcs::B1(mu, nu-1, 0));
-                }
-            }
-        }
-        
-        fn b11(&mut self, mu:usize, nu:usize, sigma:usize) {
-            if self.a[nu] < (mu - 1) as u32 {
-                // This simulates a loop until a[nu] = mu - 1
-                self.stack.push(Funcs::B11(mu, nu, sigma));
-                self.a[nu] +=  1;
-                if (self.a[nu] + sigma as u32) % 2 == 1 {
-                    self.stack.push(Funcs::F1(mu, nu-1, 0));
-                } else {
-                    self.stack.push(Funcs::B1(mu, nu-1, 0));
-                }
-            } else {
-                if (mu + sigma) % 2 == 1 {
-                    self.a[nu - 1] = 0;
-                } else {
-                    self.a[mu] = 0;
-                }
-            }
-        }
-        
-        fn b2(&mut self, mu:usize, nu:usize, sigma:usize) {
-            if mu == 2 {
-                self.visit();
-            } else {
-                self.stack.push(Funcs::B1(mu-1, nu-1, (mu+sigma)%2 ));
-            }
-        }        
-    }
-
-    impl Iterator for IncSeqIterator {
-        type Item = Vec<u32>;
-
-        fn next(&mut self) -> Option<Self::Item> {
-            // While the buffer is empty we call run() to fill
-            // it up. run() will return 'false' once the stack is 
-            // exhausted.
-            while self.buffer.len() == 0 && self.run() {
-                ()
-            }
-
-            // If we are here and the buffer is empty it is because
-            // we are done iterating.
-            return self.buffer.pop_front();
-        }
-    }
-
+mod test {
+    use super::seqit;
+    use super::partit;
+    use super::Partitions;
 
     #[test]
     fn seq_count() {
@@ -199,17 +23,42 @@ mod partition_iterator {
 
         // n = 5
         for (k, res) in std::iter::zip(1..=5, vec![1,15,25,10,1]) {
-            let c = IncSeqIterator::new(5,k).count();
+            let c = seqit::IncSeqIterator::new(5,k).count();
             assert_eq!(c, res);
         }
 
         // n = 6
         for (k, res) in std::iter::zip(1..=6, vec![1,31,90,65,15,1]) {
-            let c = IncSeqIterator::new(6,k).count();
+            let c = seqit::IncSeqIterator::new(6,k).count();
             assert_eq!(c, res);
         }        
 
-        let c = IncSeqIterator::new(10,5).count();
+        let c = seqit::IncSeqIterator::new(10,5).count();
         assert_eq!(c, 42525); 
     }
+
+    #[test]
+    fn kpartition_test() {
+        let ls = vec![1,2,3,4,5];
+        let it = ls.iter().kpartitions(3);
+    }    
+
+    #[test]
+    fn kpartition_test2() {
+        let ls = vec![1,2,3,4,5];
+        let it = partit::kpartitions(ls.iter(), 3);
+        for a in it {
+            println!("{:?}", a);
+        }
+    }        
 }
+
+// pub trait PartitionTools: Iterator {
+//     fn kpartitions<T>(self, k:u32) -> TupleCombinations<Self, T>
+//         where Self: Sized + Clone,
+//               Self::Item: Clone,
+//               T: adaptors::HasCombination<Self>,
+//     {
+//         adaptors::tuple_combinations(self)
+//     }
+// }
