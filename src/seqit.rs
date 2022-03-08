@@ -22,13 +22,20 @@ impl IncSeqIterator {
         for j in 1..=k {
             a[(n-k+j) as usize] = j-1;
         }
-
-        let buffer = VecDeque::new();
+        
+        let mut buffer = VecDeque::new();
         if k == 0 {
+            if n == 0 {
+                // For n = k = 0 there exists the empty partition, so
+                // we need to return a single empty vector.
+                buffer.push_back(Vec::new()); 
+            }
             return IncSeqIterator{a, stack: Vec::new(), buffer};
-        } else if k == 1 {
+        } 
+
+        if k == 1 {
             let mut res = IncSeqIterator{a, stack: Vec::new(), buffer};
-            res.visit();
+            res.visit(); // Put single sequence into buffer
             return res;
         }
 
