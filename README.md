@@ -12,10 +12,28 @@ How to use with Cargo:
 partition-iterator = "0.1.0"
 ```
 
-How to use in your crate:
+Example usage:
 
 ```rust
 use partition_iterator::PartitionIter;
+
+fn main() {
+    let ls = vec!['a', 'b', 'c', 'd'];
+
+    for a in ls.iter().kpartitions(3) {
+        println!("{:?}", a);
+    }
+}
+```
+
+Output:
+```
+    [['a', 'b'], ['c'], ['d']]
+    [['a'], ['b', 'c'], ['d']]
+    [['a', 'c'], ['b'], ['d']]
+    [['a'], ['b'], ['c', 'd']]
+    [['a'], ['b', 'd'], ['c']]
+    [['a', 'd'], ['b'], ['c']]
 ```
 
 ## License
