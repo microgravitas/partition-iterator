@@ -9,7 +9,6 @@ mod test {
     use super::seqit;
     use super::PartitionIter;
 
-
     #[test]
     fn seq_count() {
         // Make sure the number of elements is equal to the
@@ -67,14 +66,3 @@ mod test {
         }
     }          
 }
-
-// pub trait PartitionTools: Iterator {
-//     fn kpartitions<T>(self, k:u32) -> TupleCombinations<Self, T>
-//         where Self: Sized + Clone,
-//               Self::Item: Clone,
-//               T: adaptors::HasCombination<Self>,
-//     {
-//         adaptors::tuple_combinations(self)
-//     }
-// }
-
